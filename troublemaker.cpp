@@ -10,6 +10,7 @@
 #include <iostream>
 #include <list>
 #include <yaml-cpp/yaml.h>
+#include <fstream>
 
 struct userstats {
   int total = 0;
@@ -41,6 +42,33 @@ int main(int argc, char** argv)
   
   std::map<twitter::user_id, userstats> stats;
   std::mutex stats_mutex;
+  
+  // Read in old data
+  {
+    std::ifstream datafile("data.txt");
+    
+    if (datafile.is_open())
+    {
+      std::string line;
+      while (std::getline(datafile, line))
+      {
+        std::istringstream iss(line);
+        
+        twitter::user_id uid;
+        iss >> uid;
+        
+        userstats& s = stats[uid];
+        iss >> s.total;
+        iss >> s.days;
+        iss >> s.day2;
+        iss >> s.day3;
+        iss >> s.day4;
+        iss >> s.day5;
+        iss >> s.day6;
+        iss >> s.day7;
+      }
+    }
+  }
   
   twitter::client client(auth);
   client.setUserStreamNotifyCallback([&] (twitter::notification n) {
@@ -150,9 +178,12 @@ int main(int argc, char** argv)
       std::cout << "Twitter error while getting friends: " << resp << std::endl;
     }
     
+    std::cout << "stat rotation" << std::endl;
     // This is all just for stats rotation
     {
       std::lock_guard<std::mutex> stats_guard(stats_mutex);
+      std::ofstream datafile("data.txt", std::ofstream::out | std::ofstream::trunc);
+      
       for (auto mapping : stats)
       {
         auto& s = mapping.second;
@@ -167,9 +198,18 @@ int main(int argc, char** argv)
         s.day4 = s.day3;
         s.day3 = s.day2;
         s.day2 = s.day1;
-        s.day1 = 0;
         
         s.total = s.day2 + s.day3 + s.day4 + s.day5 + s.day6 + s.day7;
+        
+        datafile << mapping.first << " ";
+        datafile << s.total << " ";
+        datafile << s.days << " ";
+        datafile << s.day2 << " ";
+        datafile << s.day3 << " ";
+        datafile << s.day4 << " ";
+        datafile << s.day5 << " ";
+        datafile << s.day6 << " ";
+        datafile << s.day7 << std::endl;
       }
     }
   }
