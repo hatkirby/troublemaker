@@ -184,7 +184,7 @@ int main(int argc, char** argv)
       std::lock_guard<std::mutex> stats_guard(stats_mutex);
       std::ofstream datafile("data.txt", std::ofstream::out | std::ofstream::trunc);
       
-      for (auto mapping : stats)
+      for (auto& mapping : stats)
       {
         auto& s = mapping.second;
         if (s.days < 7)
@@ -198,6 +198,7 @@ int main(int argc, char** argv)
         s.day4 = s.day3;
         s.day3 = s.day2;
         s.day2 = s.day1;
+        s.day1 = 0;
         
         s.total = s.day2 + s.day3 + s.day4 + s.day5 + s.day6 + s.day7;
         
